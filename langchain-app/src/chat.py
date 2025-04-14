@@ -4,6 +4,7 @@
 
 import os
 import re
+import logging
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_community.chat_message_histories import ChatMessageHistory
 
@@ -19,6 +20,9 @@ from .utils import (
     update_user_memory,
     get_memory_summary
 )
+
+# 设置日志
+logger = logging.getLogger(__name__)
 
 def list_available_sessions():
     """列出所有可用的会话"""
@@ -173,6 +177,11 @@ def interactive_conversation(llm):
                 # 限制历史记录为最近的10条消息，避免token超限
                 recent_history = chat_history.messages[-10:] if len(chat_history.messages) > 10 else chat_history.messages
                 
+                # 记录历史消息以便调试
+                logger.debug(f"聊天历史记录 ({len(recent_history)} 条消息):")
+                for i, msg in enumerate(recent_history):
+                    logger.debug(f"[{i}] {msg.type}: {msg.content[:50]}...")
+                
                 # 准备代理输入
                 agent_input = {
                     "input": user_input,
@@ -196,6 +205,7 @@ def interactive_conversation(llm):
                 save_user_memory(session_id)
                 
             except Exception as e:
+                logger.exception("对话处理出错")
                 print(f"\n发生错误: {e}")
     finally:
         # 确保在退出时保存会话和用户记忆

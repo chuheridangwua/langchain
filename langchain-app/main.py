@@ -6,7 +6,7 @@ def main():
     """主函数，执行智能对话应用流程"""
     try:
         # 设置日志
-        setup_logging()
+        # setup_logging()
         # 初始化模型
         llm = initialize_model()
         

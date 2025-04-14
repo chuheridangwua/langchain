@@ -1,12 +1,12 @@
-from langchain.agents import AgentExecutor, ZeroShotAgent
-from langchain.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
+from langchain.agents import AgentExecutor, ZeroShotAgent, ConversationalAgent
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
 from langchain_core.messages import SystemMessage, HumanMessage
 from ..tools import get_current_time, search_tool, generate_and_execute_code, execute_python_code
 
 
 def create_agent(llm, include_memory_info=None):
-    """使用中文提示词和 ZeroShotAgent 创建智能代理（ReAct 风格）
+    """使用ConversationalAgent创建智能代理
     
     Args:
         llm: 语言模型实例
@@ -20,11 +20,11 @@ def create_agent(llm, include_memory_info=None):
         execute_python_code
     ]
 
-    # 构造工具描述字符串（供 prompt 展示）
+    # 构造工具描述字符串
     tools_description = "\n".join([f"{tool.name}: {tool.description}" for tool in tools])
     
-    # 创建系统消息内容
-    system_message_content = f"""你是一个智能助手，可以调用以下工具：
+    # 构建系统提示词
+    prefix = f"""你是一个智能助手，可以调用以下工具：
 
 {tools_description}
 
@@ -32,48 +32,47 @@ def create_agent(llm, include_memory_info=None):
 
     # 添加用户记忆信息（如果存在）
     if include_memory_info:
-        system_message_content += f"""
+        prefix += f"""
 以下是关于当前用户的信息：
 {include_memory_info}
 
-请在回答时利用这些信息提供个性化的回应。
+请记住这些信息并在回答时利用它们提供个性化的回应。
 """
 
-    # 添加代理格式指导
-    system_message_content += """
-请严格按照以下格式进行输出：
+    # 添加历史消息处理提示
+    prefix += """
+下面是你与用户的对话历史，请记住这些信息，保持连贯性：
 
-Question: 用户的问题
-Thought: 你的推理
-Action: 工具名称
-Action Input: 要传给工具的输入内容
-Observation: 工具输出的内容
-...（可多轮）
-Thought: 对结果的进一步思考
-Final Answer: 给用户的最终答案
+{chat_history}
+
 """
 
-    # 使用更现代的聊天模板方法
-    prompt = ChatPromptTemplate.from_messages([
-        SystemMessage(content=system_message_content),
-        MessagesPlaceholder(variable_name="chat_history"),  # 聊天历史占位符
-        HumanMessage(content="{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad")
-    ])
+    # 创建 ConversationalAgent 模板
+    prompt = ConversationalAgent.create_prompt(
+        tools, 
+        prefix=prefix,
+        suffix="Question: {input}\n{agent_scratchpad}",
+        input_variables=["input", "chat_history", "agent_scratchpad"]
+    )
 
-    # 使用旧的ZeroShotAgent，但使用新的提示模板
-    agent = ZeroShotAgent(
-        llm_chain=LLMChain(llm=llm, prompt=prompt),
+    # 定义 llm_chain
+    llm_chain = LLMChain(llm=llm, prompt=prompt)
+    
+    # 创建 ConversationalAgent
+    agent = ConversationalAgent(
+        llm_chain=llm_chain,
         tools=tools,
         verbose=True
     )
-
+    
+    # 创建 AgentExecutor
     agent_executor = AgentExecutor(
         agent=agent,
         tools=tools,
         verbose=True,
         return_intermediate_steps=True,
-        handle_parsing_errors=True
+        handle_parsing_errors=True,
+        max_iterations=6  # 限制最大迭代次数，避免无限循环
     )
 
     return agent_executor
