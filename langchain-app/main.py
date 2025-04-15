@@ -17,6 +17,8 @@ def main():
         # 初始化模型
         llm = initialize_model()
         
+        print("初始化模型完成")
+        
         # 开始交互式对话
         interactive_conversation(llm)
     except Exception as e:

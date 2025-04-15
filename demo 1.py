@@ -12,9 +12,17 @@ from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(
     # model='deepseek/deepseek-chat:free', 
-    model="deepseek/deepseek-chat-v3-0324:free",
-    openai_api_key="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",
-    openai_api_base="https://openrouter.ai/api/v1",
+    # model="deepseek/deepseek-chat-v3-0324:free",
+    # openai_api_key="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",
+    # openai_api_base="https://openrouter.ai/api/v1",
+    
+    # model="deepseek-v3-250324",  # 使用DeepSeek的大模型
+    # openai_api_key="09c7ad8f-1659-417b-b6e3-fc7b891061d4",  # API密钥
+    # openai_api_base="https://ark.cn-beijing.volces.com/api/v3",  # API基础URL
+    
+    model="gpt-4.1-2025-04-14",  # 使用DeepSeek的大模型
+    openai_api_key="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",  # API密钥
+    
     streaming=True
     # max_tokens=1024
 

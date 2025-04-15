@@ -61,7 +61,7 @@ system_prompt = """
 # 创建agent执行器 - 将system_prompt作为prompt参数传递
 agent_executor = chat_agent_executor.create_react_agent(model, tools, prompt=system_prompt)
 
-response = agent_executor.invoke({'messages': [HumanMessage(content="2025-04-14谁用了什么书")]})
+response = agent_executor.invoke({'messages': [HumanMessage(content="2025-04-14谁用了什么书")]}) 
 print(response)
 
 

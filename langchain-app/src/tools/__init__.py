@@ -12,6 +12,24 @@ from .local_kb_tools import (
     add_website_to_knowledge_base,
     get_document_metadata
 )
+from .database_tools import (
+    get_database_tables,
+    get_table_structure,
+    execute_sql_query,
+    ai_query_database
+)
+from .file_tools import (
+    read_file,
+    write_file,
+    append_to_file,
+    list_directory,
+    create_directory,
+    delete_file,
+    delete_directory,
+    move_file,
+    copy_file,
+    get_file_info
+)
 
 # 导出所有工具函数
 __all__ = [
@@ -24,4 +42,19 @@ __all__ = [
     "get_knowledge_base_info",
     "add_website_to_knowledge_base",
     "get_document_metadata",
+    "get_database_tables",
+    "get_table_structure",
+    "execute_sql_query",
+    "ai_query_database",
+    # 文件操作工具
+    "read_file",
+    "write_file",
+    "append_to_file",
+    "list_directory",
+    "create_directory",
+    "delete_file",
+    "delete_directory",
+    "move_file",
+    "copy_file",
+    "get_file_info",
 ] 

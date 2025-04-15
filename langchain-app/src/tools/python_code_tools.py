@@ -22,6 +22,7 @@ class SafePythonREPL:
         self.locals = {}
         # 预导入常用模块
         self.modules = {
+            # 基础模块
             "os": os,
             "sys": sys,
             "io": io,
@@ -32,11 +33,162 @@ class SafePythonREPL:
             "re": __import__("re"),
             "time": __import__("time"),
             "pathlib": __import__("pathlib"),
+            
+            # 文件操作相关模块
+            "csv": __import__("csv"),
+            "pickle": __import__("pickle"),
+            "shutil": __import__("shutil"),
+            "tempfile": __import__("tempfile"),
+            "glob": __import__("glob"),
+            "fnmatch": __import__("fnmatch"),
+            "fileinput": __import__("fileinput"),
+            "configparser": __import__("configparser"),
+            "zipfile": __import__("zipfile"),
+            "tarfile": __import__("tarfile"),
+            "gzip": __import__("gzip"),
+            "bz2": __import__("bz2"),
+            "lzma": __import__("lzma"),
+            
+            # 数据处理相关模块
+            "collections": __import__("collections"),
+            "itertools": __import__("itertools"),
+            "functools": __import__("functools"),
+            "operator": __import__("operator"),
+            "statistics": __import__("statistics"),
+            "array": __import__("array"),
+            "struct": __import__("struct"),
+            "copy": __import__("copy"),
+            "enum": __import__("enum"),
+            "typing": __import__("typing"),
+            
+            # 网络和Web相关模块
+            "urllib": __import__("urllib"),
+            "http": __import__("http"),
+            "email": __import__("email"),
+            "socket": __import__("socket"),
+            "html": __import__("html"),
+            "base64": __import__("base64"),
+            "hashlib": __import__("hashlib"),
+            
+            # 数据格式处理模块
+            "xml": __import__("xml"),
+            "uuid": __import__("uuid"),
+            
+            # 数据库相关模块
+            "sqlite3": __import__("sqlite3"),
+            
+            # 日期时间处理
+            "calendar": __import__("calendar"),
+            
+            # 尝试导入可能安装的第三方库（如果失败则忽略）
+            **self._try_import_modules([
+                # 数据科学相关
+                "numpy", 
+                "pandas", 
+                "matplotlib", 
+                "seaborn", 
+                
+                # 网络请求
+                "requests", 
+                "bs4", 
+                
+                # 数据格式
+                "yaml", 
+                "toml", 
+                
+                # Excel处理
+                "openpyxl",  # 处理现代Excel(.xlsx)
+                "xlrd",      # 读取Excel
+                "xlwt",      # 写入Excel(.xls)
+                "xlsxwriter", # 创建Excel(.xlsx)
+                "xlutils",   # Excel工具集
+                
+                # Word文档处理
+                "docx",      # python-docx包，处理.docx文件
+                "docx2txt",  # 从Word提取文本
+                "python-docx", # 另一种导入尝试
+                "docxtpl",   # 基于模板的Word处理
+                
+                # PDF处理
+                "PyPDF2",    # PDF处理
+                "PyPDF4",    # PDF处理升级版
+                "reportlab", # PDF生成
+                
+                # 图像处理
+                "pillow", 
+                "opencv-python",
+                
+                # 数据分析和可视化
+                "plotly",
+                "scikit-learn",
+                "scipy"
+            ])
         }
         
         # 将模块添加到局部变量中
         for module_name, module in self.modules.items():
             self.locals[module_name] = module
+    
+    def _try_import_modules(self, module_names):
+        """尝试导入模块，如果不可用则忽略"""
+        imported_modules = {}
+        for module_name in module_names:
+            try:
+                # 处理特殊情况
+                if module_name == "python-docx":
+                    # python-docx包实际上导入为docx
+                    try:
+                        imported_modules["docx"] = __import__("docx")
+                    except ImportError:
+                        pass
+                elif module_name == "pillow":
+                    # Pillow库实际导入为PIL
+                    try:
+                        imported_modules["PIL"] = __import__("PIL")
+                        # 添加常用的PIL子模块
+                        imported_modules["Image"] = __import__("PIL.Image", fromlist=["Image"])
+                    except ImportError:
+                        pass
+                else:
+                    # 尝试导入模块
+                    imported_modules[module_name] = __import__(module_name)
+                    
+                # 为常见库添加特殊支持
+                if module_name == "numpy":
+                    imported_modules["np"] = imported_modules[module_name]
+                elif module_name == "pandas":
+                    imported_modules["pd"] = imported_modules[module_name]
+                elif module_name == "matplotlib":
+                    imported_modules["plt"] = __import__("matplotlib.pyplot", fromlist=["pyplot"])
+                elif module_name == "bs4":
+                    try:
+                        imported_modules["BeautifulSoup"] = __import__("bs4").BeautifulSoup
+                    except:
+                        pass
+                elif module_name == "openpyxl":
+                    # 导入常用的openpyxl子模块
+                    try:
+                        imported_modules["load_workbook"] = __import__("openpyxl", fromlist=["load_workbook"]).load_workbook
+                        imported_modules["Workbook"] = __import__("openpyxl", fromlist=["Workbook"]).Workbook
+                    except:
+                        pass
+                elif module_name == "scikit-learn":
+                    # scikit-learn通常作为sklearn导入
+                    try:
+                        imported_modules["sklearn"] = __import__("sklearn")
+                    except:
+                        pass
+                elif module_name == "PyPDF2" or module_name == "PyPDF4":
+                    # 为PDF库添加常用的子模块
+                    try:
+                        imported_modules["PdfReader"] = getattr(__import__(module_name, fromlist=["PdfReader"]), "PdfReader")
+                        imported_modules["PdfWriter"] = getattr(__import__(module_name, fromlist=["PdfWriter"]), "PdfWriter")
+                    except:
+                        pass
+            except ImportError:
+                # 如果模块不可用，则忽略
+                pass
+        return imported_modules
     
     def clean_code(self, code: str) -> str:
         """清理代码，移除可能导致语法错误的多余标记
@@ -104,17 +256,57 @@ code_generation_template = ChatPromptTemplate.from_messages([
 
 请遵循以下准则：
 1. 生成完整的、可执行的Python代码
-2. 为代码添加详细的注释，解释每个关键步骤
+2. 为代码添加详细的中文注释，解释每个关键步骤
 3. 确保代码安全可靠、性能高效
-4. 尽量使用Python标准库，除非特别需要第三方库
+4. 必须明确导入所有使用到的模块，不要假设任何模块已被预导入
 5. 适当处理可能的异常和边缘情况
 6. 不要包含任何解释性文本，只返回可直接执行的Python代码
 7. 不要使用代码块标记（```python 或 ```）
+8. 所有需要输出的结果必须使用print()函数打印，不要直接使用变量作为输出
 
-重要:
-- 以下模块已经预导入，可以直接使用: os, sys, io, datetime, json, math, random, re, time, pathlib
-- 不要在代码中导入这些已预导入的模块，直接使用即可
-- 你的输出将直接被Python解释器执行，因此必须是有效的Python代码
+关于输出和导入的重要规则：
+- 即使是下面列出的"预导入模块"，也必须在代码中明确导入才能使用
+- 所有需要展示的结果必须使用print()函数输出，而不是直接写变量名
+- 对于数据分析任务，使用print(df.head())而不是直接写df.head()
+- 对于matplotlib图表，必须调用plt.show()显示图表
+
+常用模块参考（使用时需要先导入）:
+
+基础模块:
+- os, sys, io, datetime, json, math, random, re, time, pathlib, calendar
+- collections, itertools, functools, operator, statistics, copy, enum, typing
+- xml, html, uuid, sqlite3, base64, hashlib
+
+文件操作:
+- csv, pickle, shutil, tempfile, glob, fnmatch, fileinput, configparser
+- zipfile, tarfile, gzip, bz2, lzma
+
+网络请求:
+- urllib, http, email, socket, requests
+
+Excel处理:
+- openpyxl (包括load_workbook和Workbook)
+- xlrd, xlwt, xlsxwriter, xlutils
+
+Word文档处理:
+- docx (python-docx包)
+- docx2txt, docxtpl
+
+PDF处理:
+- PyPDF2/PyPDF4 (包括PdfReader和PdfWriter)
+- reportlab
+
+数据科学与可视化:
+- numpy (别名: np)
+- pandas (别名: pd)
+- matplotlib.pyplot (别名: plt)
+- seaborn, plotly, sklearn, scipy
+
+图像处理:
+- PIL.Image (从PIL导入Image)
+- cv2 (如果OpenCV可用)
+
+你的输出将直接被Python解释器执行，因此必须是有效的Python代码，包含所有必要的导入语句。
 """),
     ("human", "{instruction}")
 ])
