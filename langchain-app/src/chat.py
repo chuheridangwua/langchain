@@ -14,11 +14,7 @@ from .utils import (
     create_session,
     get_session_history,
     save_session,
-    load_session,
-    get_user_memory,
-    save_user_memory,
-    update_user_memory,
-    get_memory_summary
+    load_session
 )
 
 # 设置日志
@@ -61,10 +57,27 @@ def is_history_command(text):
         
     return False
 
-def is_memory_command(text):
-    """判断输入是否是查看记忆的命令"""
-    text = text.strip().lower()
-    return text in ['memory', 'mem', '记忆', '信息']
+def format_chat_history(messages):
+    """格式化聊天历史记录为ConversationalAgent可用的格式
+    
+    Args:
+        messages: 消息列表
+        
+    Returns:
+        格式化后的聊天历史字符串
+    """
+    if not messages:
+        return ""
+    
+    formatted_history = []
+    
+    for message in messages:
+        if message.type == "human":
+            formatted_history.append(f"Human: {message.content}")
+        elif message.type == "ai":
+            formatted_history.append(f"AI: {message.content}")
+    
+    return "\n".join(formatted_history)
 
 def interactive_conversation(llm):
     """进行交互式对话"""
@@ -104,15 +117,11 @@ def interactive_conversation(llm):
     if not session_id:
         session_id = create_session()
     
-    # 获取聊天历史和用户记忆
+    # 获取聊天历史
     chat_history = get_session_history(session_id)
-    user_memory = get_user_memory(session_id)
     
-    # 获取记忆摘要
-    memory_summary = get_memory_summary(session_id)
-    
-    # 创建智能代理（带有记忆信息）
-    agent_executor = create_agent(llm, include_memory_info=memory_summary)
+    # 创建智能代理
+    agent_executor = create_agent(llm)
     
     # 创建回调处理器
     callbacks = [StreamingAgentCallbackHandler()]
@@ -122,10 +131,6 @@ def interactive_conversation(llm):
     # 如果会话有历史记录，显示提示信息
     if chat_history.messages:
         print("\n已加载历史对话记录。输入 'history' 查看历史记录。")
-    
-    # 如果有用户记忆，显示提示
-    if user_memory:
-        print("已加载用户信息。输入 'memory' 查看记忆内容。")
     
     try:
         while True:
@@ -146,30 +151,7 @@ def interactive_conversation(llm):
                 print("=== 记录结束 ===")
                 continue
             
-            # 检查是否查看记忆内容
-            if is_memory_command(user_input):
-                if user_memory:
-                    print("\n=== 用户信息记忆 ===")
-                    for key, value in user_memory.items():
-                        # 跳过以下划线开头的内部字段
-                        if not key.startswith('_'):
-                            print(f"{key}: {value}")
-                    print("=== 记录结束 ===")
-                else:
-                    print("\n尚未记录用户信息")
-                continue
-            
             try:
-                # 更新用户记忆
-                update_user_memory(session_id, user_input)
-                
-                # 获取最新的记忆摘要
-                memory_summary = get_memory_summary(session_id)
-                
-                # 如果记忆有更新，重新创建代理
-                if memory_summary:
-                    agent_executor = create_agent(llm, include_memory_info=memory_summary)
-                
                 # 将用户输入添加到历史记录
                 chat_history.add_user_message(user_input)
                 
@@ -177,15 +159,17 @@ def interactive_conversation(llm):
                 # 限制历史记录为最近的10条消息，避免token超限
                 recent_history = chat_history.messages[-10:] if len(chat_history.messages) > 10 else chat_history.messages
                 
+                # 将聊天历史格式化为ConversationalAgent可用的格式
+                formatted_history = format_chat_history(recent_history[:-1])  # 去掉最后一条(当前)消息
+                
                 # 记录历史消息以便调试
-                logger.debug(f"聊天历史记录 ({len(recent_history)} 条消息):")
-                for i, msg in enumerate(recent_history):
-                    logger.debug(f"[{i}] {msg.type}: {msg.content[:50]}...")
+                logger.debug(f"聊天历史记录 ({len(recent_history)-1} 条消息):")
+                logger.debug(formatted_history)
                 
                 # 准备代理输入
                 agent_input = {
                     "input": user_input,
-                    "chat_history": recent_history
+                    "chat_history": formatted_history
                 }
                 
                 print("\nAI: ", end="", flush=True)
@@ -200,16 +184,14 @@ def interactive_conversation(llm):
                 # 将AI回答添加到历史记录
                 chat_history.add_ai_message(answer)
                 
-                # 每次对话后保存会话历史和用户记忆
+                # 每次对话后保存会话历史
                 save_session(session_id)
-                save_user_memory(session_id)
                 
             except Exception as e:
                 logger.exception("对话处理出错")
                 print(f"\n发生错误: {e}")
     finally:
-        # 确保在退出时保存会话和用户记忆
+        # 确保在退出时保存会话
         save_session(session_id)
-        save_user_memory(session_id)
         print(f"\n会话已保存（ID: {session_id}）")
         print(f"您可以使用此ID在下次启动时恢复会话。") 

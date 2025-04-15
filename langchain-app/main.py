@@ -1,3 +1,9 @@
+import sys
+import os
+
+# 禁用Python字节码缓存（禁止生成__pycache__文件夹和.pyc文件）
+sys.dont_write_bytecode = True
+
 from src.models import initialize_model
 from src.chat import interactive_conversation
 from src.utils import setup_logging
@@ -7,6 +13,7 @@ def main():
     try:
         # 设置日志
         # setup_logging()
+        
         # 初始化模型
         llm = initialize_model()
         
@@ -14,6 +21,7 @@ def main():
         interactive_conversation(llm)
     except Exception as e:
         print(f"程序运行出错: {str(e)}")
+        
 
 # 程序入口点
 if __name__ == "__main__":
