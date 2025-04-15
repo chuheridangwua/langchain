@@ -12,6 +12,7 @@ def initialize_model():
             model="deepseek-v3-250324",  # 使用DeepSeek的大模型
             openai_api_key="09c7ad8f-1659-417b-b6e3-fc7b891061d4",  # API密钥
             openai_api_base="https://ark.cn-beijing.volces.com/api/v3",  # API基础URL
+            
             streaming=True,  # 启用流式输出
             temperature=0.7,  # 设置温度参数
             max_tokens=None,  # 不限制最大输出token数
